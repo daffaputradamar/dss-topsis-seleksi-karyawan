@@ -33,8 +33,8 @@ export default function WeightingPanel({ onRecalculateSuccess }: WeightingPanelP
   const handleRecalculate = async () => {
     if (Math.abs(totalWeight - 100) > 0.1) {
       toast({
-        title: "Invalid Weights",
-        description: "Total weights must equal 100%",
+        title: "Bobot Tidak Valid",
+        description: "Total bobot harus sama dengan 100%",
         variant: "destructive",
       });
       return;
@@ -46,15 +46,15 @@ export default function WeightingPanel({ onRecalculateSuccess }: WeightingPanelP
       await apiRequest("POST", "/api/candidates/recalculate", weights);
       
       toast({
-        title: "Scores Recalculated",
-        description: "All candidate scores have been updated with new weights",
+        title: "Kalkulasi Ulang Berhasil",
+        description: "Semua skor kandidat telah diperbarui dengan bobot baru",
       });
 
       onRecalculateSuccess();
     } catch (error) {
       toast({
-        title: "Recalculation Failed",
-        description: error instanceof Error ? error.message : "Failed to recalculate scores",
+        title: "Kalkulasi Ulang Gagal",
+        description: error instanceof Error ? error.message : "Gagal melakukan kalkulasi ulang skor",
         variant: "destructive",
       });
     } finally {
@@ -65,13 +65,13 @@ export default function WeightingPanel({ onRecalculateSuccess }: WeightingPanelP
   return (
     <Card className="mt-8">
       <CardHeader>
-        <CardTitle>Scoring Weights Configuration</CardTitle>
+        <CardTitle>Konfigurasi Penilaian Bobot</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6">
           <div>
             <Label htmlFor="experience" className="block text-sm font-medium text-slate-700 mb-2">
-              Experience Weight
+              Bobot Pengalaman <span className="text-xs text-green-600">(Benefit)</span>
             </Label>
             <div className="flex items-center space-x-3">
               <Slider
@@ -89,7 +89,7 @@ export default function WeightingPanel({ onRecalculateSuccess }: WeightingPanelP
 
           <div>
             <Label htmlFor="education" className="block text-sm font-medium text-slate-700 mb-2">
-              Education Weight
+              Bobot Pendidikan <span className="text-xs text-green-600">(Benefit)</span>
             </Label>
             <div className="flex items-center space-x-3">
               <Slider
@@ -107,7 +107,7 @@ export default function WeightingPanel({ onRecalculateSuccess }: WeightingPanelP
 
           <div>
             <Label htmlFor="interview" className="block text-sm font-medium text-slate-700 mb-2">
-              Interview Weight
+              Bobot Wawancara <span className="text-xs text-green-600">(Benefit)</span>
             </Label>
             <div className="flex items-center space-x-3">
               <Slider
@@ -125,7 +125,7 @@ export default function WeightingPanel({ onRecalculateSuccess }: WeightingPanelP
 
           <div>
             <Label htmlFor="age" className="block text-sm font-medium text-slate-700 mb-2">
-              Age Weight
+              Bobot Usia <span className="text-xs text-red-600">(Cost)</span>
             </Label>
             <div className="flex items-center space-x-3">
               <Slider
@@ -148,7 +148,7 @@ export default function WeightingPanel({ onRecalculateSuccess }: WeightingPanelP
               className="w-full bg-primary hover:bg-blue-700"
             >
               <i className="fas fa-calculator mr-2"></i>
-              {isRecalculating ? 'Calculating...' : 'Recalculate'}
+              {isRecalculating ? 'Sedang Proses Kalkulasi...' : 'Kalkulasi Ulang'}
             </Button>
           </div>
         </div>
@@ -156,7 +156,7 @@ export default function WeightingPanel({ onRecalculateSuccess }: WeightingPanelP
         <div className={`mt-4 p-3 rounded-lg ${Math.abs(totalWeight - 100) > 0.1 ? 'bg-red-50' : 'bg-blue-50'}`}>
           <p className={`text-sm ${Math.abs(totalWeight - 100) > 0.1 ? 'text-red-800' : 'text-blue-800'}`}>
             <i className={`fas ${Math.abs(totalWeight - 100) > 0.1 ? 'fa-exclamation-triangle' : 'fa-info-circle'} mr-2`}></i>
-            Total Weight: {totalWeight}% {Math.abs(totalWeight - 100) > 0.1 ? '(Must equal 100%)' : '(Perfect!)'}
+            Total Nilai Bobot: {totalWeight}% {Math.abs(totalWeight - 100) > 0.1 ? '(Total harus 100%)' : '(Sesuai)'}
           </p>
         </div>
       </CardContent>

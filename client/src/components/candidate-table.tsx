@@ -3,6 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Candidate } from "@shared/schema";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
+import { Trash } from "lucide-react";
 
 interface CandidateTableProps {
   candidates: Candidate[];
@@ -10,29 +14,30 @@ interface CandidateTableProps {
 }
 
 const getStatusInfo = (score: number | null) => {
-  if (!score) return { label: "Pending", className: "bg-gray-100 text-gray-800" };
+  if (score === null || score === 0) return { label: "Pending", className: "bg-gray-100 text-gray-800" };
   
-  if (score >= 80) return { label: "Recommended", className: "bg-green-100 text-green-800" };
-  if (score >= 70) return { label: "Consider", className: "bg-blue-100 text-blue-800" };
-  if (score >= 60) return { label: "Review", className: "bg-yellow-100 text-yellow-800" };
+  if (score >= 0.6) return { label: "Recommended", className: "bg-green-100 text-green-800" };
+  if (score >= 0.5) return { label: "Consider", className: "bg-blue-100 text-blue-800" };
+  if (score >= 0.4) return { label: "Review", className: "bg-yellow-100 text-yellow-800" };
   return { label: "Not Recommended", className: "bg-red-100 text-red-800" };
 };
 
 const getScoreColor = (score: number | null) => {
-  if (!score) return "text-slate-600";
-  if (score >= 80) return "text-green-600";
-  if (score >= 70) return "text-blue-600";
-  if (score >= 60) return "text-amber-600";
+  if (score === null || score === 0) return "text-slate-600";
+  if (score >= 0.6) return "text-green-600";
+  if (score >= 0.5) return "text-blue-600";
+  if (score >= 0.4) return "text-amber-600";
   return "text-red-600";
 };
 
 const getScoreLabel = (score: number | null) => {
-  if (!score) return "Pending";
-  if (score >= 80) return "Excellent";
-  if (score >= 70) return "Very Good";
-  if (score >= 60) return "Good";
+  if (score === null || score === 0) return "Pending";
+  if (score >= 0.6) return "Excellent";
+  if (score >= 0.5) return "Very Good";
+  if (score >= 0.4) return "Good";
   return "Poor";
 };
+
 
 const getRankBadgeColor = (rank: number) => {
   if (rank === 1) return "bg-green-600";
@@ -51,12 +56,43 @@ const renderStars = (rating: number) => {
 };
 
 export default function CandidateTable({ candidates, isLoading }: CandidateTableProps) {
+  const [isClearing, setIsClearing] = useState(false);
+
+  const handleClearData = async () => {
+    setIsClearing(true);
+    try {
+      const response = await fetch("/api/candidates", {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to clear data");
+      }
+
+      toast({
+        title: "Data cleared",
+        description: "Semua data kandidat telah dihapus.",
+      });
+
+      // Optionally refresh the page or update state
+      window.location.reload();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Gagal menghapus data kandidat.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <Card className="overflow-hidden">
         <CardHeader>
-          <CardTitle>Candidate Evaluation Results</CardTitle>
-          <p className="text-sm text-slate-600">Ranked by weighted scoring algorithm</p>
+          <CardTitle>Hasil Evaluasi Kandidat</CardTitle>
+          <p className="text-sm text-slate-600">Peringkat berdasarkan TOPSIS</p>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -80,13 +116,13 @@ export default function CandidateTable({ candidates, isLoading }: CandidateTable
     return (
       <Card className="overflow-hidden">
         <CardHeader>
-          <CardTitle>Candidate Evaluation Results</CardTitle>
-          <p className="text-sm text-slate-600">Ranked by weighted scoring algorithm</p>
+          <CardTitle>Hasil evaluasi Kandidat</CardTitle>
+          <p className="text-sm text-slate-600">Peringkat berdasarkan TOPSIS</p>
         </CardHeader>
         <CardContent className="text-center py-12">
           <i className="fas fa-users text-4xl text-slate-300 mb-4"></i>
-          <h3 className="text-lg font-medium text-slate-900 mb-2">No Candidates Found</h3>
-          <p className="text-slate-600">Upload an Excel file to get started with candidate evaluation.</p>
+          <h3 className="text-lg font-medium text-slate-900 mb-2">Tidak ditemukan data Kandidat</h3>
+          <p className="text-slate-600">Upload data Kandidat menggunakan excel untuk memulai penilaian Kandidat.</p>
         </CardContent>
       </Card>
     );
@@ -95,21 +131,28 @@ export default function CandidateTable({ candidates, isLoading }: CandidateTable
   return (
     <Card className="overflow-hidden">
       <CardHeader>
-        <CardTitle>Candidate Evaluation Results</CardTitle>
-        <p className="text-sm text-slate-600">Ranked by weighted scoring algorithm</p>
+        <CardTitle>Hasil evaluasi Kandidat</CardTitle>
+        <p className="text-sm text-slate-600">Peringkat berdasarkan TOPSIS</p>
+        <Button
+          variant="secondary"
+          className="ml-auto"
+          onClick={handleClearData}
+          disabled={isClearing}
+        >
+          <Trash/> {isClearing ? "Clearing..." : "Clear Data"}
+        </Button>
       </CardHeader>
-      
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Rank</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Experience</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Education</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Interview</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Age</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Final Score</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Peringkat</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Nama</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Pengalaman</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Pendidikan</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Wawancara</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Usia</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Skor Akhir</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
             </tr>
           </thead>
@@ -134,12 +177,11 @@ export default function CandidateTable({ candidates, isLoading }: CandidateTable
                       </div>
                       <div>
                         <div className="text-sm font-medium text-slate-900">{candidate.nama}</div>
-                        <div className="text-sm text-slate-500">ID: EMP{candidate.id.toString().padStart(3, '0')}</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-slate-900">{candidate.pengalaman} years</div>
+                    <div className="text-sm text-slate-900">{candidate.pengalaman} tahun</div>
                     <div className="text-sm text-slate-500">
                       {candidate.pengalaman >= 5 ? 'Senior Level' : 
                        candidate.pengalaman >= 3 ? 'Mid Level' : 'Junior Level'}

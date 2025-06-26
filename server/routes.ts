@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCandidateSchema, scoringWeightsSchema, excelTemplateSchema, defaultWeights, type Candidate, type ScoringWeights } from "@shared/schema";
+import { insertCandidateSchema, scoringWeightsSchema, excelTemplateSchema, defaultWeights, type Candidate, type ScoringWeights, TopsisResult } from "@shared/schema";
 import multer from "multer";
 import * as XLSX from "xlsx";
 import { z } from "zod";
@@ -27,26 +27,75 @@ const upload = multer({
 });
 
 // Calculate weighted score for a candidate
-function calculateScore(candidate: Omit<Candidate, 'id' | 'finalScore'>, weights: ScoringWeights): number {
-  // Normalize each criterion to 0-100 scale
-  const normalizedExperience = Math.min(candidate.pengalaman * 10, 100); // Cap at 10 years = 100
-  const normalizedEducation = (candidate.pendidikan / 5) * 100; // 1-5 scale to 0-100
-  const normalizedInterview = candidate.wawancara; // Already 0-100
-  const normalizedAge = Math.max(0, 100 - Math.abs(candidate.usia - 30) * 2); // Optimal age around 30
+function calculateScore(
+  candidates: Candidate[],
+  weights: ScoringWeights
+): TopsisResult[] {
 
-  // Calculate weighted score
-  const totalWeight = weights.experience + weights.education + weights.interview + weights.age;
-  
-  const score = (
-    (normalizedExperience * weights.experience) +
-    (normalizedEducation * weights.education) +
-    (normalizedInterview * weights.interview) +
-    (normalizedAge * weights.age)
-  ) / totalWeight;
+  const kriteria: ("benefit" | "cost")[] = ["benefit", "benefit", "benefit", "cost"];
 
-  return Math.round(score * 10) / 10; // Round to 1 decimal place
+  // Step 1: Normalisasi Matriks
+  const sumSquares = [0, 0, 0, 0];
+  candidates.forEach(c => {
+    sumSquares[0] += c.pengalaman ** 2;
+    sumSquares[1] += c.pendidikan ** 2;
+    sumSquares[2] += c.wawancara ** 2;
+    sumSquares[3] += c.usia ** 2;
+  });
+  const denominators = sumSquares.map(Math.sqrt);
+
+  const normalized = candidates.map(c => [
+    c.pengalaman / denominators[0],
+    c.pendidikan / denominators[1],
+    c.wawancara / denominators[2],
+    c.usia / denominators[3]
+  ]);
+
+  // Step 2: Matriks Ternormalisasi Terbobot
+  const bobotArr = [
+    weights.experience,
+    weights.education,
+    weights.interview,
+    weights.age
+  ];
+
+  const weighted = normalized.map(row =>
+    row.map((val, idx) => val * bobotArr[idx])
+  );
+
+  // Step 3: Tentukan Ideal Positif & Negatif
+  const idealPositif: number[] = [];
+  const idealNegatif: number[] = [];
+
+  for (let j = 0; j < 4; j++) {
+    const col = weighted.map(r => r[j]);
+    if (kriteria[j] === "benefit") {
+      idealPositif[j] = Math.max(...col);
+      idealNegatif[j] = Math.min(...col);
+    } else {
+      idealPositif[j] = Math.min(...col);
+      idealNegatif[j] = Math.max(...col);
+    }
+  }
+
+  // Step 4: Hitung Jarak ke Ideal Positif & Negatif
+  const hasil = candidates.map((c, idx) => {
+    const row = weighted[idx];
+    const dPositif = Math.sqrt(
+      row.reduce((sum, val, j) => sum + (val - idealPositif[j]) ** 2, 0)
+    );
+    const dNegatif = Math.sqrt(
+      row.reduce((sum, val, j) => sum + (val - idealNegatif[j]) ** 2, 0)
+    );
+
+    const cc = dNegatif / (dPositif + dNegatif);
+
+    return { nama: c.nama, score: Math.round(cc * 1000) / 1000 };
+  });
+
+  // Urutkan dari skor tertinggi
+  return hasil.sort((a, b) => b.score - a.score);
 }
-
 export async function registerRoutes(app: Express): Promise<Server> {
   
   // Get all candidates
@@ -70,7 +119,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const data = XLSX.utils.sheet_to_json(worksheet);
+      // Specify custom headers to map columns correctly
+      const data = XLSX.utils.sheet_to_json(worksheet, {
+        header: [
+          "Nama Lengkap",
+          "Pengalaman (tahun)",
+          "Pendidikan (1-5)",
+          "Wawancara (0-100)",
+          "Usia"
+        ],
+        range: 1 // skip the first row if it is the header
+      });
 
       if (data.length === 0) {
         return res.status(400).json({ message: "Excel file is empty" });
@@ -83,8 +142,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (let i = 0; i < data.length; i++) {
         try {
           const row = data[i] as any;
-          const validated = excelTemplateSchema.parse(row);
-          
+          // Map custom headers to schema fields
+          const mappedRow = {
+            Nama: row["Nama Lengkap"],
+            Pengalaman: row["Pengalaman (tahun)"],
+            Pendidikan: row["Pendidikan (1-5)"],
+            Wawancara: row["Wawancara (0-100)"],
+            Usia: row["Usia"]
+          };
+          const validated = excelTemplateSchema.parse(mappedRow);
+
           validatedCandidates.push({
             nama: validated.Nama,
             pengalaman: validated.Pengalaman,
@@ -113,10 +180,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const candidates = await storage.createCandidates(validatedCandidates);
 
       // Calculate scores with default weights
-      const candidatesWithScores = candidates.map(candidate => ({
-        ...candidate,
-        finalScore: calculateScore(candidate, defaultWeights)
-      }));
+      const results = calculateScore(candidates, defaultWeights);
+      
+      const candidatesWithScores = candidates.map(candidate => {
+          const result = results.find(r => r.nama === candidate.nama);
+          return { ...candidate, finalScore: result?.score ?? 0 };
+      });
 
       await storage.updateCandidateScores(candidatesWithScores);
 
@@ -137,35 +206,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create sample data for template
       const templateData = [
         {
-          Nama: "John Doe",
-          Pengalaman: 5,
-          Pendidikan: 4,
-          Wawancara: 85,
-          Usia: 30
+          "Nama Lengkap": "Reza",
+          "Pengalaman (tahun)": 5,
+          "Pendidikan (1-5)": 4,
+          "Wawancara (0-100)": 85,
+          "Usia": 30
         },
         {
-          Nama: "Jane Smith", 
-          Pengalaman: 3,
-          Pendidikan: 5,
-          Wawancara: 92,
-          Usia: 28
+          "Nama Lengkap": "Teuku", 
+          "Pengalaman (tahun)": 3,
+          "Pendidikan (1-5)": 5,
+          "Wawancara (0-100)": 92,
+          "Usia": 28
         }
       ];
 
       // Create workbook and worksheet
       const workbook = XLSX.utils.book_new();
-      const worksheet = XLSX.utils.json_to_sheet(templateData);
+      const worksheet = XLSX.utils.json_to_sheet(templateData, { header: [
+        "Nama Lengkap",
+        "Pengalaman (tahun)",
+        "Pendidikan (1-5)",
+        "Wawancara (0-100)",
+        "Usia"
+      ]});
 
       // Set column widths
       worksheet['!cols'] = [
-        { width: 20 }, // Nama
-        { width: 12 }, // Pengalaman
-        { width: 12 }, // Pendidikan
-        { width: 12 }, // Wawancara
+        { width: 20 }, // Nama Lengkap
+        { width: 18 }, // Pengalaman (tahun)
+        { width: 18 }, // Pendidikan (1-5)
+        { width: 18 }, // Wawancara (0-100)
         { width: 10 }  // Usia
       ];
 
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Candidates");
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Kandidat Karyawan");
 
       // Generate buffer
       const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
@@ -192,10 +267,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const candidates = await storage.getAllCandidates();
       
-      const updatedCandidates = candidates.map(candidate => ({
-        ...candidate,
-        finalScore: calculateScore(candidate, weights)
-      }));
+      console.log(candidates, defaultWeights);
+      
+      const results = calculateScore(candidates, defaultWeights);
+      
+      const updatedCandidates = candidates.map(candidate => {
+          const result = results.find(r => r.nama === candidate.nama);
+          return { ...candidate, finalScore: result?.score ?? 0 };
+      });
 
       await storage.updateCandidateScores(updatedCandidates);
 

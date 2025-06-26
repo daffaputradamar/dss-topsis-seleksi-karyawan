@@ -25,8 +25,8 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
     
     if (!allowedTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls)$/)) {
       toast({
-        title: "Invalid File Type",
-        description: "Please upload an Excel file (.xlsx or .xls)",
+        title: "Tipe File tidak Valid",
+        description: "Mohom unggah file excel (.xlsx or .xls)",
         variant: "destructive",
       });
       return;
@@ -35,8 +35,8 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
     // Validate file size (10MB)
     if (file.size > 10 * 1024 * 1024) {
       toast({
-        title: "File Too Large",
-        description: "File size must be less than 10MB",
+        title: "File terlalu Besar",
+        description: "Maksimal ukuran file adalah 10MB",
         variant: "destructive",
       });
       return;
@@ -62,8 +62,8 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
       const result = await response.json();
       
       toast({
-        title: "Upload Successful",
-        description: `Processed ${result.count} candidates successfully`,
+        title: "Upload Berhasil",
+        description: `Berhasil memproses ${result.count} kandidat`,
       });
 
       onUploadSuccess();
@@ -75,8 +75,8 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
     } catch (error) {
       console.error('Upload error:', error);
       toast({
-        title: "Upload Failed",
-        description: error instanceof Error ? error.message : "Failed to upload file",
+        title: "Upload Gagal",
+        description: error instanceof Error ? error.message : "gagal mengunggah file",
         variant: "destructive",
       });
     } finally {
@@ -105,13 +105,13 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
       document.body.removeChild(a);
 
       toast({
-        title: "Template Downloaded",
-        description: "Excel template has been downloaded successfully",
+        title: "Template Berhasil Diunduh",
+        description: "File Template Excel kandidat telah diunduh",
       });
     } catch (error) {
       toast({
-        title: "Download Failed",
-        description: "Failed to download template",
+        title: "Download Gagal",
+        description: "Gagal mengunduh template",
         variant: "destructive",
       });
     }
@@ -150,7 +150,7 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
         <div className="grid md:grid-cols-2 gap-8">
           {/* Upload Area */}
           <div>
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Upload Candidate Data</h2>
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">Upload Data Kandidat</h2>
             <div
               className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
                 isDragOver
@@ -166,7 +166,7 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
                 <i className="fas fa-cloud-upload-alt text-4xl text-slate-400"></i>
               </div>
               <p className="text-lg font-medium text-slate-900 mb-2">
-                {isUploading ? 'Processing...' : 'Drop your Excel file here'}
+                {isUploading ? 'Processing...' : 'Drag and drop your Excel file here'}
               </p>
               <p className="text-sm text-slate-500 mb-4">or click to browse files</p>
               <Button disabled={isUploading} className="bg-primary hover:bg-blue-700">
@@ -182,8 +182,8 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
               />
             </div>
             <div className="mt-4 text-sm text-slate-600">
-              <p><strong>Supported format:</strong> .xlsx, .xls</p>
-              <p><strong>Max file size:</strong> 10MB</p>
+              <p><strong>Format:</strong> .xlsx, .xls</p>
+              <p><strong>Ukuran Max file:</strong> 10MB</p>
             </div>
           </div>
 
@@ -194,7 +194,7 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
               <div className="text-center mb-4">
                 <i className="fas fa-file-download text-3xl text-green-600 mb-3"></i>
                 <h3 className="font-medium text-slate-900 mb-2">Excel Template</h3>
-                <p className="text-sm text-slate-600 mb-4">Download the required format for candidate data</p>
+                <p className="text-sm text-slate-600 mb-4">Download format yang sudah disediakan</p>
               </div>
               <Button 
                 onClick={handleDownloadTemplate}

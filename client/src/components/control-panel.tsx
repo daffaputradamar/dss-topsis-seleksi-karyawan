@@ -24,8 +24,8 @@ export default function ControlPanel({
   const handleExportResults = async () => {
     if (candidateCount === 0) {
       toast({
-        title: "No Data to Export",
-        description: "Please upload candidate data first",
+        title: "Tidak ditemukan data kandidat",
+        description: "Mohon unggah data kandidat terlebih dahulu sebelum melakukan ekspor.",
         variant: "destructive",
       });
       return;
@@ -52,13 +52,13 @@ export default function ControlPanel({
       document.body.removeChild(a);
 
       toast({
-        title: "Export Successful",
-        description: "Results have been exported to Excel file",
+        title: "Export Berhasil",
+        description: "Hasil kandidat telah diekspor ke file Excel.",
       });
     } catch (error) {
       toast({
-        title: "Export Failed",
-        description: error instanceof Error ? error.message : "Failed to export results",
+        title: "Export Gagal",
+        description: error instanceof Error ? error.message : "Gagal melakukan ekspor hasil kandidat.",
         variant: "destructive",
       });
     }
@@ -72,7 +72,7 @@ export default function ControlPanel({
             <div className="relative">
               <Input
                 type="text"
-                placeholder="Search candidates..."
+                placeholder="Cari kandidat..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 className="pl-10 pr-4 py-2 w-64"
@@ -100,7 +100,7 @@ export default function ControlPanel({
               className="bg-green-600 hover:bg-green-700"
             >
               <i className="fas fa-file-export mr-2"></i>
-              Export Results
+              Export hasil
             </Button>
           </div>
         </div>

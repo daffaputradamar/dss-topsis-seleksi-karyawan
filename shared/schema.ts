@@ -52,3 +52,8 @@ export const excelTemplateSchema = z.object({
 });
 
 export type ExcelTemplateRow = z.infer<typeof excelTemplateSchema>;
+
+export type TopsisResult = {
+  nama: string;
+  score: number;
+}

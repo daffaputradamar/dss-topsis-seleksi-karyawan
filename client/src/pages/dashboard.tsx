@@ -20,16 +20,16 @@ export default function Dashboard() {
   const handleUploadSuccess = () => {
     refetch();
     toast({
-      title: "Upload Successful",
-      description: "Candidate data has been processed and scored.",
+      title: "Upload Berhasil",
+      description: "Data kandidat berhasil diunggah dan dikalkulasi.",
     });
   };
 
   const handleRecalculateSuccess = () => {
     refetch();
     toast({
-      title: "Scores Recalculated", 
-      description: "All candidate scores have been updated with new weights.",
+      title: "Kalkulasi Ulang Berhasil", 
+      description: "Semua skor kandidat telah diperbarui dengan bobot baru",
     });
   };
 
@@ -65,16 +65,8 @@ export default function Dashboard() {
                 </div>
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-slate-900">DSS Employee Selection</h1>
-                <p className="text-sm text-slate-500">Decision Support System</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button className="text-slate-400 hover:text-slate-600 transition-colors">
-                <i className="fas fa-bell text-lg"></i>
-              </button>
-              <div className="w-8 h-8 bg-slate-300 rounded-full flex items-center justify-center">
-                <i className="fas fa-user text-slate-600 text-sm"></i>
+                <h1 className="text-xl font-semibold text-slate-900">DSS - Seleksi Karyawan</h1>
+                <p className="text-sm text-slate-500">TOPSIS</p>
               </div>
             </div>
           </div>
