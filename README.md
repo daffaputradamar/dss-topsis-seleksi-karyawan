@@ -35,7 +35,7 @@ Untuk menjalankan aplikasi dalam mode pengembangan:
 npm run dev
 ```
 
-Ini akan memulai server dan mengaktifkan hot-reloading untuk pengembangan.
+Ini akan memulai aplikasi front-end dengan hot-reloading untuk pengembangan.
 
 ### Mode Produksi
 
@@ -43,7 +43,7 @@ Untuk membangun dan memulai aplikasi dalam mode produksi:
 
 ```bash
 npm run build
-npm start
+npm run start
 ```
 
 ## Fitur
@@ -54,4 +54,4 @@ npm start
 
 ## Catatan
 
-- Pastikan port `5000` tersedia karena aplikasi melayani API dan klien pada port ini.
+- Aplikasi ini sekarang sepenuhnya berbasis front-end dan tidak memerlukan server untuk berfungsi.

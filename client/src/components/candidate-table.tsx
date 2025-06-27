@@ -58,16 +58,11 @@ const renderStars = (rating: number) => {
 export default function CandidateTable({ candidates, isLoading }: CandidateTableProps) {
   const [isClearing, setIsClearing] = useState(false);
 
-  const handleClearData = async () => {
+  const handleClearData = () => {
     setIsClearing(true);
     try {
-      const response = await fetch("/api/candidates", {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to clear data");
-      }
+      // Clear candidate data directly in the front-end state
+      candidates.length = 0;
 
       toast({
         title: "Data cleared",

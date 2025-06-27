@@ -1,63 +1,123 @@
-import type { Candidate, ScoringWeights } from "@shared/schema";
+import type { Candidate, ScoringWeights, TopsisResult } from "@shared/schema";
 
-export function calculateCandidateScore(
-  candidate: Omit<Candidate, 'id' | 'finalScore'>,
+function calculateCandidateScore(
+  candidates: Candidate[],
   weights: ScoringWeights
-): number {
-  // Normalize each criterion to 0-100 scale
-  const normalizedExperience = Math.min(candidate.pengalaman * 10, 100); // Cap at 10 years = 100
-  const normalizedEducation = (candidate.pendidikan / 5) * 100; // 1-5 scale to 0-100
-  const normalizedInterview = candidate.wawancara; // Already 0-100
-  const normalizedAge = Math.max(0, 100 - Math.abs(candidate.usia - 30) * 2); // Optimal age around 30
+): TopsisResult[] {
+  const kriteria: ("benefit" | "cost")[] = [
+    "benefit",
+    "benefit",
+    "benefit",
+    "cost",
+  ];
 
-  // Calculate weighted score
-  const totalWeight = weights.experience + weights.education + weights.interview + weights.age;
-  
-  const score = (
-    (normalizedExperience * weights.experience) +
-    (normalizedEducation * weights.education) +
-    (normalizedInterview * weights.interview) +
-    (normalizedAge * weights.age)
-  ) / totalWeight;
+  // Step 1: Normalisasi Matriks
+  const sumSquares = [0, 0, 0, 0];
+  candidates.forEach((c) => {
+    sumSquares[0] += c.pengalaman ** 2;
+    sumSquares[1] += c.pendidikan ** 2;
+    sumSquares[2] += c.wawancara ** 2;
+    sumSquares[3] += c.usia ** 2;
+  });
+  const denominators = sumSquares.map(Math.sqrt);
 
-  return Math.round(score * 10) / 10; // Round to 1 decimal place
+  const normalized = candidates.map((c) => [
+    c.pengalaman / denominators[0],
+    c.pendidikan / denominators[1],
+    c.wawancara / denominators[2],
+    c.usia / denominators[3],
+  ]);
+
+  // Step 2: Matriks Ternormalisasi Terbobot
+  const bobotArr = [
+    weights.experience,
+    weights.education,
+    weights.interview,
+    weights.age,
+  ];
+
+  const weighted = normalized.map((row) =>
+    row.map((val, idx) => val * bobotArr[idx])
+  );
+
+  // Step 3: Tentukan Ideal Positif & Negatif
+  const idealPositif: number[] = [];
+  const idealNegatif: number[] = [];
+
+  for (let j = 0; j < 4; j++) {
+    const col = weighted.map((r) => r[j]);
+    if (kriteria[j] === "benefit") {
+      idealPositif[j] = Math.max(...col);
+      idealNegatif[j] = Math.min(...col);
+    } else {
+      idealPositif[j] = Math.min(...col);
+      idealNegatif[j] = Math.max(...col);
+    }
+  }
+
+  // Step 4: Hitung Jarak ke Ideal Positif & Negatif
+  const hasil = candidates.map((c, idx) => {
+    const row = weighted[idx];
+    const dPositif = Math.sqrt(
+      row.reduce((sum, val, j) => sum + (val - idealPositif[j]) ** 2, 0)
+    );
+    const dNegatif = Math.sqrt(
+      row.reduce((sum, val, j) => sum + (val - idealNegatif[j]) ** 2, 0)
+    );
+
+    const cc = dNegatif / (dPositif + dNegatif);
+
+    return { nama: c.nama, score: Math.round(cc * 1000) / 1000 };
+  });
+
+  // Urutkan dari skor tertinggi
+  return hasil.sort((a, b) => b.score - a.score);
 }
 
 export function recalculateAllScores(
   candidates: Candidate[],
   weights: ScoringWeights
 ): Candidate[] {
-  return candidates.map(candidate => ({
-    ...candidate,
-    finalScore: calculateCandidateScore(candidate, weights)
-  }));
+  const results = calculateCandidateScore(candidates, weights);
+
+  const candidatesWithScores = candidates.map((candidate) => {
+    const result = results.find((r: TopsisResult) => r.nama === candidate.nama);
+    return { ...candidate, finalScore: result?.score ?? 0 };
+  });
+
+  return candidatesWithScores
 }
 
 export function getCandidateRanking(candidates: Candidate[]): Candidate[] {
-  return [...candidates].sort((a, b) => (b.finalScore || 0) - (a.finalScore || 0));
+  return [...candidates].sort(
+    (a, b) => (b.finalScore || 0) - (a.finalScore || 0)
+  );
 }
 
 export function getCandidateStats(candidates: Candidate[]) {
   const totalCandidates = candidates.length;
-  
+
   if (totalCandidates === 0) {
     return {
       total: 0,
       recommended: 0,
       averageScore: 0,
-      topScore: 0
+      topScore: 0,
     };
   }
 
-  const scores = candidates.map(c => c.finalScore || 0);
-  const recommended = candidates.filter(c => (c.finalScore || 0) >= 80).length;
-  const averageScore = scores.reduce((sum, score) => sum + score, 0) / totalCandidates;
+  const scores = candidates.map((c) => c.finalScore || 0);
+  const recommended = candidates.filter(
+    (c) => (c.finalScore || 0) >= 80
+  ).length;
+  const averageScore =
+    scores.reduce((sum, score) => sum + score, 0) / totalCandidates;
   const topScore = Math.max(...scores);
 
   return {
     total: totalCandidates,
     recommended,
     averageScore: Math.round(averageScore * 10) / 10,
-    topScore: Math.round(topScore * 10) / 10
+    topScore: Math.round(topScore * 10) / 10,
   };
 }

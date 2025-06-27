@@ -44,11 +44,11 @@ export const defaultWeights: ScoringWeights = {
 
 // Excel template structure
 export const excelTemplateSchema = z.object({
-  Nama: z.string().min(1, "Name is required"),
-  Pengalaman: z.number().min(0, "Experience must be 0 or more years"),
-  Pendidikan: z.number().min(1).max(5, "Education must be between 1-5"),
-  Wawancara: z.number().min(0).max(100, "Interview score must be between 0-100"),
-  Usia: z.number().min(18).max(65, "Age must be between 18-65"),
+  Nama: z.string().min(1, "Nama wajib diisi"),
+  Pengalaman: z.number().min(0, "Pengalaman harus lebih dari 0"),
+  Pendidikan: z.number().min(1).max(5, "Pendidikan harus diantara 1-5"),
+  Wawancara: z.number().min(0).max(100, "Wawancara harus diantara 0-100"),
+  Usia: z.number().min(18).max(65, "Usia harus diantara 18-65"),
 });
 
 export type ExcelTemplateRow = z.infer<typeof excelTemplateSchema>;

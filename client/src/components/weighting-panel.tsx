@@ -4,33 +4,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import type { ScoringWeights } from "@shared/schema";
+import { recalculateAllScores } from "@/lib/scoring-algorithm";
+import type { Candidate, ScoringWeights } from "@shared/schema";
 
 interface WeightingPanelProps {
-  onRecalculateSuccess: () => void;
+  candidates: Candidate[];
+  weights: ScoringWeights;
+  onWeightChange: (criterion: keyof ScoringWeights, value: number[]) => void;
+  onRecalculateSuccess: (updatedCandidates: Candidate[]) => void;
 }
 
-export default function WeightingPanel({ onRecalculateSuccess }: WeightingPanelProps) {
-  const [weights, setWeights] = useState<ScoringWeights>({
-    experience: 25,
-    education: 20,
-    interview: 40,
-    age: 15,
-  });
+export default function WeightingPanel({ candidates, weights, onWeightChange, onRecalculateSuccess }: WeightingPanelProps) {
   const [isRecalculating, setIsRecalculating] = useState(false);
   const { toast } = useToast();
 
   const totalWeight = weights.experience + weights.education + weights.interview + weights.age;
 
-  const handleWeightChange = (criterion: keyof ScoringWeights, value: number[]) => {
-    setWeights(prev => ({
-      ...prev,
-      [criterion]: value[0]
-    }));
-  };
-
-  const handleRecalculate = async () => {
+  const handleRecalculate = () => {
     if (Math.abs(totalWeight - 100) > 0.1) {
       toast({
         title: "Bobot Tidak Valid",
@@ -43,14 +33,13 @@ export default function WeightingPanel({ onRecalculateSuccess }: WeightingPanelP
     setIsRecalculating(true);
 
     try {
-      await apiRequest("POST", "/api/candidates/recalculate", weights);
-      
+      const updatedCandidates = recalculateAllScores(candidates, weights);
+      onRecalculateSuccess(updatedCandidates);
+
       toast({
         title: "Kalkulasi Ulang Berhasil",
         description: "Semua skor kandidat telah diperbarui dengan bobot baru",
       });
-
-      onRecalculateSuccess();
     } catch (error) {
       toast({
         title: "Kalkulasi Ulang Gagal",
@@ -76,7 +65,7 @@ export default function WeightingPanel({ onRecalculateSuccess }: WeightingPanelP
             <div className="flex items-center space-x-3">
               <Slider
                 value={[weights.experience]}
-                onValueChange={(value) => handleWeightChange('experience', value)}
+                onValueChange={(value) => onWeightChange('experience', value)}
                 max={100}
                 step={1}
                 className="flex-1"
@@ -94,7 +83,7 @@ export default function WeightingPanel({ onRecalculateSuccess }: WeightingPanelP
             <div className="flex items-center space-x-3">
               <Slider
                 value={[weights.education]}
-                onValueChange={(value) => handleWeightChange('education', value)}
+                onValueChange={(value) => onWeightChange('education', value)}
                 max={100}
                 step={1}
                 className="flex-1"
@@ -112,7 +101,7 @@ export default function WeightingPanel({ onRecalculateSuccess }: WeightingPanelP
             <div className="flex items-center space-x-3">
               <Slider
                 value={[weights.interview]}
-                onValueChange={(value) => handleWeightChange('interview', value)}
+                onValueChange={(value) => onWeightChange('interview', value)}
                 max={100}
                 step={1}
                 className="flex-1"
@@ -130,7 +119,7 @@ export default function WeightingPanel({ onRecalculateSuccess }: WeightingPanelP
             <div className="flex items-center space-x-3">
               <Slider
                 value={[weights.age]}
-                onValueChange={(value) => handleWeightChange('age', value)}
+                onValueChange={(value) => onWeightChange('age', value)}
                 max={100}
                 step={1}
                 className="flex-1"

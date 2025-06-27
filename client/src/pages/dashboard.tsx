@@ -1,41 +1,98 @@
-import { useQuery } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 import UploadSection from "@/components/upload-section";
 import ControlPanel from "@/components/control-panel";
 import CandidateTable from "@/components/candidate-table";
 import StatsSummary from "@/components/stats-summary";
 import WeightingPanel from "@/components/weighting-panel";
-import type { Candidate } from "@shared/schema";
-import { useState } from "react";
+import { excelTemplateSchema, ScoringWeights, type Candidate } from "@shared/schema";
+import { recalculateAllScores } from "@/lib/scoring-algorithm";
+import { toast } from "@/hooks/use-toast";
+import { z } from "zod";
 
 export default function Dashboard() {
-  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("score");
-
-  const { data: candidates = [], isLoading, refetch } = useQuery<Candidate[]>({
-    queryKey: ["/api/candidates"],
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [weights, setWeights] = useState<ScoringWeights>({
+    experience: 25,
+    education: 20,
+    interview: 40,
+    age: 15,
   });
 
-  const handleUploadSuccess = () => {
-    refetch();
-    toast({
-      title: "Upload Berhasil",
-      description: "Data kandidat berhasil diunggah dan dikalkulasi.",
-    });
+  const handleUploadSuccess = (uploadedCandidates: Candidate[]) => {
+
+    if (uploadedCandidates.length === 0) {
+      return toast({
+        title: "Tidak ada kandidat ditemukan",
+        description: "Pastikan file yang diunggah berisi data kandidat yang valid.",
+        variant: "destructive",
+      });
+    }
+
+    // Validate and transform data
+    const validatedCandidates: Candidate[] = [];
+    const errors = [];
+
+    for (let i = 0; i < uploadedCandidates.length; i++) {
+      try {
+        const row = uploadedCandidates[i] as any;
+        // Map custom headers to schema fields
+        const mappedRow = {
+          Nama: row["Nama Lengkap"],
+          Pengalaman: row["Pengalaman (tahun)"],
+          Pendidikan: row["Pendidikan (1-5)"],
+          Wawancara: row["Wawancara (0-100)"],
+          Usia: row["Usia"]
+        };
+        const validated = excelTemplateSchema.parse(mappedRow);
+
+        validatedCandidates.push({
+          id: i + 1,
+          nama: validated.Nama,
+          pengalaman: validated.Pengalaman,
+          pendidikan: validated.Pendidikan,
+          wawancara: validated.Wawancara,
+          usia: validated.Usia,
+          finalScore: null
+        });
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          errors.push(`Row ${i + 2}: ${error.errors.map(e => e.message).join(', ')}`);
+        } else {
+          errors.push(`Row ${i + 2}: Invalid data format`);
+        }
+      }
+    }
+
+    if (errors.length > 0) {
+      toast({
+        title: "Data Validasi Gagal",
+        description: `Beberapa baris tidak valid:\n${errors.join('\n')}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log("Validated Candidates:", validatedCandidates);
+    
+    const scoredCandidates = recalculateAllScores(validatedCandidates, weights);
+    setCandidates(scoredCandidates);
   };
 
-  const handleRecalculateSuccess = () => {
-    refetch();
-    toast({
-      title: "Kalkulasi Ulang Berhasil", 
-      description: "Semua skor kandidat telah diperbarui dengan bobot baru",
-    });
+  const handleRecalculateSuccess = (updatedCandidates: Candidate[]) => {
+    setCandidates(updatedCandidates);
   };
 
-  // Filter and sort candidates
+  const handleWeightChange = (criterion: keyof ScoringWeights, value: number[]) => {
+    setWeights(prev => ({
+      ...prev,
+      [criterion]: value[0],
+    }));
+  };
+
   const filteredAndSortedCandidates = candidates
-    .filter(candidate => 
+    .filter(candidate =>
       candidate.nama.toLowerCase().includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => {
@@ -75,23 +132,29 @@ export default function Dashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <UploadSection onUploadSuccess={handleUploadSuccess} />
-        
+
         <ControlPanel
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           sortBy={sortBy}
           onSortChange={setSortBy}
           candidateCount={candidates.length}
+          candidates={candidates}
         />
-        
-        <CandidateTable 
+
+        <CandidateTable
           candidates={filteredAndSortedCandidates}
-          isLoading={isLoading}
+          isLoading={false}
         />
-        
+
         <StatsSummary candidates={candidates} />
-        
-        <WeightingPanel onRecalculateSuccess={handleRecalculateSuccess} />
+
+        <WeightingPanel
+          candidates={candidates}
+          weights={weights}
+          onWeightChange={handleWeightChange}
+          onRecalculateSuccess={(updatedCandidates: Candidate[]) => handleRecalculateSuccess(updatedCandidates)}
+        />
       </div>
     </div>
   );

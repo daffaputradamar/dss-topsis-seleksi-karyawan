@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import * as XLSX from "xlsx";
 
 interface ControlPanelProps {
   searchQuery: string;
@@ -10,6 +11,7 @@ interface ControlPanelProps {
   sortBy: string;
   onSortChange: (sortBy: string) => void;
   candidateCount: number;
+  candidates: any[]; // Add candidates prop
 }
 
 export default function ControlPanel({
@@ -17,11 +19,12 @@ export default function ControlPanel({
   onSearchChange,
   sortBy,
   onSortChange,
-  candidateCount
+  candidateCount,
+  candidates,
 }: ControlPanelProps) {
   const { toast } = useToast();
 
-  const handleExportResults = async () => {
+  const handleExportResults = () => {
     if (candidateCount === 0) {
       toast({
         title: "Tidak ditemukan data kandidat",
@@ -32,20 +35,19 @@ export default function ControlPanel({
     }
 
     try {
-      const response = await fetch('/api/candidates/export', {
-        credentials: 'include',
+      const worksheet = XLSX.utils.json_to_sheet(candidates);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Candidates");
+
+      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Export failed');
-      }
-
-      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = 'candidate-results.xlsx';
+      a.download = "candidate-results.xlsx";
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
