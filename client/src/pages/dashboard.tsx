@@ -75,8 +75,13 @@ export default function Dashboard() {
     }
 
     console.log("Validated Candidates:", validatedCandidates);
+    console.log("Scoring Weights:", weights);
+    
     
     const scoredCandidates = recalculateAllScores(validatedCandidates, weights);
+
+    console.log("Scored Candidates:", scoredCandidates);
+    
     setCandidates(scoredCandidates);
   };
 

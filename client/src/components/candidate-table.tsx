@@ -202,7 +202,7 @@ export default function CandidateTable({ candidates, isLoading }: CandidateTable
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className={`text-lg font-bold ${getScoreColor(candidate.finalScore)}`}>
-                      {candidate.finalScore?.toFixed(1) || '0.0'}
+                      {candidate.finalScore?.toFixed(2) || '0.00'}
                     </div>
                     <div className="text-xs text-slate-500">
                       {getScoreLabel(candidate.finalScore)}
